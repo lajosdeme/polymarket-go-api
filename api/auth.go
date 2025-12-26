@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/lajosdeme/polymarket-go-api/client"
 	"github.com/lajosdeme/polymarket-go-api/types"
@@ -28,7 +29,13 @@ func (a *AuthAPI) CreateAPIKey(ctx context.Context, nonce uint64) (*types.APICre
 		return nil, fmt.Errorf("L1 authentication required for creating API keys")
 	}
 
-	body, err := a.client.DoRequestWithL1Auth(ctx, "POST", "/auth/api-key", nil, nonce)
+	// Get server timestamp
+	timestamp, err := a.GetServerTime(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get server time: %w", err)
+	}
+
+	body, err := a.client.DoRequestWithL1Auth(ctx, "POST", "/auth/api-key", nil, nonce, timestamp)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +55,13 @@ func (a *AuthAPI) DeriveAPIKey(ctx context.Context, nonce uint64) (*types.APICre
 		return nil, fmt.Errorf("L1 authentication required for deriving API keys")
 	}
 
-	body, err := a.client.DoGetWithL1Auth(ctx, "/auth/derive-api-key", nonce, nil)
+	// Get server timestamp
+	timestamp, err := a.GetServerTime(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get server time: %w", err)
+	}
+
+	body, err := a.client.DoGetWithL1Auth(ctx, "/auth/derive-api-key", nonce, timestamp, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -59,4 +72,21 @@ func (a *AuthAPI) DeriveAPIKey(ctx context.Context, nonce uint64) (*types.APICre
 	}
 
 	return &credentials, nil
+}
+
+// GetServerTime gets the current server timestamp
+func (a *AuthAPI) GetServerTime(ctx context.Context) (int64, error) {
+	body, err := a.client.DoGet(ctx, "/time", false, nil)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get server time: %w", err)
+	}
+
+	// The response is just a number as string
+	timestampStr := string(body)
+	timestamp, err := strconv.ParseInt(timestampStr, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse timestamp: %w", err)
+	}
+
+	return timestamp, nil
 }

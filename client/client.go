@@ -114,7 +114,7 @@ func (c *ClobClient) DoRequest(ctx context.Context, method, path string, body in
 }
 
 // DoRequestWithL1Auth performs an HTTP request with L1 authentication
-func (c *ClobClient) DoRequestWithL1Auth(ctx context.Context, method, path string, body interface{}, nonce uint64) ([]byte, error) {
+func (c *ClobClient) DoRequestWithL1Auth(ctx context.Context, method, path string, body interface{}, nonce uint64, timestamp int64) ([]byte, error) {
 	// Prepare request body
 	var reqBody []byte
 	if body != nil {
@@ -138,8 +138,8 @@ func (c *ClobClient) DoRequestWithL1Auth(ctx context.Context, method, path strin
 	}
 
 	// Add L1 authentication headers
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-	headers, err := c.authManager.GenerateL1Headers(timestamp, nonce)
+	tstamp := strconv.FormatInt(time.Now().Unix(), 10)
+	headers, err := c.authManager.GenerateL1Headers(tstamp, nonce)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate L1 headers: %w", err)
 	}
@@ -219,7 +219,7 @@ func (c *ClobClient) DoGet(ctx context.Context, path string, requireL2Auth bool,
 }
 
 // DoGetWithL1Auth performs a GET request with L1 authentication
-func (c *ClobClient) DoGetWithL1Auth(ctx context.Context, path string, nonce uint64, queryParams map[string]string) ([]byte, error) {
+func (c *ClobClient) DoGetWithL1Auth(ctx context.Context, path string, nonce uint64, timestamp int64, queryParams map[string]string) ([]byte, error) {
 	// Build URL with query parameters
 	requestURL := c.baseURL + path
 	if len(queryParams) > 0 {
@@ -237,8 +237,8 @@ func (c *ClobClient) DoGetWithL1Auth(ctx context.Context, path string, nonce uin
 	}
 
 	// Add L1 authentication headers
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-	headers, err := c.authManager.GenerateL1Headers(timestamp, nonce)
+	tstamp := strconv.FormatInt(time.Now().Unix(), 10)
+	headers, err := c.authManager.GenerateL1Headers(tstamp, nonce)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate L1 headers: %w", err)
 	}

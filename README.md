@@ -5,6 +5,7 @@ A comprehensive Go SDK for interacting with the Polymarket CLOB (Centralized Lim
 ## Features
 
 - **Full API Coverage**: Complete implementation of all documented Polymarket CLOB API endpoints
+- **Gamma API Support**: Access market metadata, events, tags, and search functionality
 - **Authentication**: Support for both L1 (private key/EIP-712) and L2 (API key/HMAC) authentication
 - **Order Management**: Place, cancel, and monitor orders with all supported order types
 - **Market Data**: Access real-time pricing, orderbook, and historical data
@@ -50,6 +51,10 @@ func main() {
     pricingAPI := api.NewPricingAPI(c)
     ordersAPI := api.NewOrdersAPI(c)
     
+    // Create Gamma API client for market metadata
+    gammaClient := client.NewGammaClient("")
+    gammaAPI := api.NewGammaAPI(gammaClient)
+    
     // Get market price
     price, err := pricingAPI.GetPrice(context.Background(), "token-id", types.BUY)
     if err != nil {
@@ -57,6 +62,14 @@ func main() {
     }
     
     fmt.Printf("Current BUY price: %s\n", price.Price)
+    
+    // Get active markets from Gamma API
+    markets, err := gammaAPI.GetActiveMarkets(context.Background(), intPtr(10), intPtr(0))
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    fmt.Printf("Found %d active markets\n", len(markets))
 }
 ```
 
@@ -215,6 +228,50 @@ trades, err := tradesAPI.GetTrades(ctx, types.TradesRequest{
 })
 ```
 
+### Gamma API
+
+```go
+gammaClient := client.NewGammaClient("")
+gammaAPI := api.NewGammaAPI(gammaClient)
+
+// Get markets with optional filtering
+markets, err := gammaAPI.GetMarkets(ctx, &types.MarketFilters{
+    Closed: boolPtr(false),
+    Limit:  intPtr(50),
+    Offset: intPtr(0),
+})
+
+// Get market by slug
+market, err := gammaAPI.GetMarketBySlug(ctx, "market-slug", boolPtr(true))
+
+// Get events with filtering
+events, err := gammaAPI.GetEvents(ctx, &types.EventFilters{
+    TagID:   intPtr(123),
+    Closed:  boolPtr(false),
+    Limit:   intPtr(25),
+})
+
+// Get event by slug
+event, err := gammaAPI.GetEventBySlug(ctx, "event-slug", nil, nil)
+
+// Get all tags
+tags, err := gammaAPI.GetTags(ctx, &types.TagFilters{})
+
+// Get tag by slug
+tag, err := gammaAPI.GetTagBySlug(ctx, "politics", boolPtr(true))
+
+// Search across markets, events, and profiles
+searchResult, err := gammaAPI.Search(ctx, &types.SearchFilters{
+    Query: "election",
+    Limit: intPtr(10),
+})
+
+// Convenience methods
+activeMarkets, err := gammaAPI.GetActiveMarkets(ctx, intPtr(100), intPtr(0))
+activeEvents, err := gammaAPI.GetActiveEvents(ctx, intPtr(50), intPtr(0))
+marketsByTag, err := gammaAPI.GetMarketsByTag(ctx, 123, intPtr(25), intPtr(0))
+```
+
 ## Order Types
 
 The SDK supports all order types:
@@ -223,6 +280,27 @@ The SDK supports all order types:
 - **GTD** - Good-Til-Date  
 - **FOK** - Fill-Or-Kill
 - **FAK** - Fill-And-Kill
+
+## Gamma API Overview
+
+The Gamma API provides comprehensive market metadata, events, and search functionality for Polymarket. It organizes markets into events and provides tagging for categorization.
+
+### Key Concepts
+
+- **Markets**: Individual trading markets that map to CLOB token IDs
+- **Events**: Collections of related markets (e.g., "Who will win the election?" with multiple outcome markets)
+- **Tags**: Categorization system for filtering markets by topic, sport, etc.
+
+### Common Use Cases
+
+1. **Fetch by Slug**: Get specific markets/events using URLs from Polymarket frontend
+2. **Tag Filtering**: Filter markets by category or sport using tag IDs
+3. **Active Markets**: Retrieve all currently active trading opportunities
+4. **Search**: Search across markets, events, and user profiles
+
+### Pagination
+
+Most Gamma API endpoints support pagination with `limit` and `offset` parameters for handling large datasets efficiently.
 
 ## WebSocket Events
 
@@ -327,6 +405,13 @@ c.SetTimeout(60 * time.Second)  // Set HTTP timeout
 ```go
 wsClient := client.NewWebSocketClient("", authManager)
 wsClient.SetPingInterval(30 * time.Second)  // Set ping interval
+```
+
+### Gamma Client Options
+
+```go
+gammaClient := client.NewGammaClient("https://gamma-api.polymarket.com")
+// Gamma API endpoints are public and don't require authentication
 ```
 
 ## Development

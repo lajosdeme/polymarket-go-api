@@ -12,7 +12,7 @@ import (
 	"github.com/lajosdeme/polymarket-go-api/types"
 )
 
-func main() {
+func basicUsageExample() {
 	// Example 1: Setting up L1 authentication
 	fmt.Println("=== L1 Authentication Example ===")
 	err := l1AuthenticationExample()
@@ -27,25 +27,25 @@ func main() {
 		log.Printf("L2 Auth Example Error: %v", err)
 	}
 
-	// Example 3: Market data without authentication
+	// Example 3: Market data
 	fmt.Println("\n=== Market Data Example ===")
 	err = marketDataExample()
 	if err != nil {
 		log.Printf("Market Data Example Error: %v", err)
 	}
 
-	// Example 4: Order management with L2 authentication
+	// Example 4: Order management
 	fmt.Println("\n=== Order Management Example ===")
 	err = orderManagementExample()
 	if err != nil {
-		log.Printf("Order Management Example Error: %v", err)
+		log.Printf("Order Management Error: %v", err)
 	}
 
-	// Example 5: WebSocket connection
+	// Example 5: WebSocket
 	fmt.Println("\n=== WebSocket Example ===")
 	err = webSocketExample()
 	if err != nil {
-		log.Printf("WebSocket Example Error: %v", err)
+		log.Printf("WebSocket Error: %v", err)
 	}
 }
 

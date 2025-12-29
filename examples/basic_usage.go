@@ -274,7 +274,7 @@ func webSocketExample() error {
 
 	// Connect to market channel
 	assetIDs := []string{"1234567890", "0987654321"}
-	err = wsClient.ConnectMarketChannel(assetIDs)
+	err = wsClient.ConnectMarketChannel(assetIDs, true)
 	if err != nil {
 		return fmt.Errorf("failed to connect to market channel: %w", err)
 	}

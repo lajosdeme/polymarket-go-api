@@ -16,6 +16,8 @@ const (
 	WSEventTypeTrade WebSocketEventType = "trade"
 	// WSEventTypeOrder - Order event (user channel)
 	WSEventTypeOrder WebSocketEventType = "order"
+	// WSEventTypeMarketResolved - Market resolved event
+	WSEventTypeMarketResolved WebSocketEventType = "market_resolved"
 )
 
 // WebSocketChannelType represents the type of WebSocket channel
@@ -37,10 +39,11 @@ type WebSocketAuth struct {
 
 // WebSocketSubscribeRequest represents a WebSocket subscription request
 type WebSocketSubscribeRequest struct {
-	Auth     *WebSocketAuth       `json:"auth,omitempty"`
-	Markets  []string             `json:"markets,omitempty"`
-	AssetIDs []string             `json:"assets_ids,omitempty"`
-	Type     WebSocketChannelType `json:"type"`
+	Auth                 *WebSocketAuth       `json:"auth,omitempty"`
+	Markets              []string             `json:"markets,omitempty"`
+	AssetIDs             []string             `json:"assets_ids,omitempty"`
+	Type                 WebSocketChannelType `json:"type"`
+	CustomFeatureEnabled bool                 `json:"custom_feature_enabled"`
 }
 
 // WebSocketSubscribeUpdate represents a subscription update request
@@ -139,4 +142,29 @@ type WebSocketOrderEvent struct {
 	SizeMatched     string             `json:"size_matched"`
 	Timestamp       string             `json:"timestamp"`
 	Type            string             `json:"type"`
+}
+
+// WebSocketEventMessage represents an event message object
+type WebSocketEventMessage struct {
+	ID          string `json:"id"`
+	Ticker      string `json:"ticker"`
+	Slug        string `json:"slug"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
+// WebSocketMarketResolvedEvent represents a market resolved event
+type WebSocketMarketResolvedEvent struct {
+	EventType      string                 `json:"event_type"`
+	ID             string                 `json:"id"`
+	Question       string                 `json:"question"`
+	Market         string                 `json:"market"`
+	Slug           string                 `json:"slug"`
+	Description    string                 `json:"description"`
+	AssetIDs       []string               `json:"assets_ids"`
+	Outcomes       []string               `json:"outcomes"`
+	WinningAssetID string                 `json:"winning_asset_id"`
+	WinningOutcome string                 `json:"winning_outcome"`
+	EventMessage   *WebSocketEventMessage `json:"event_message"`
+	Timestamp      string                 `json:"timestamp"`
 }

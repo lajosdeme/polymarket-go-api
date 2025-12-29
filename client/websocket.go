@@ -28,6 +28,7 @@ type WebSocketClient struct {
 	onLastTradePriceMessage func(*types.WebSocketLastTradePriceEvent)
 	onTradeMessage          func(*types.WebSocketTradeEvent)
 	onOrderMessage          func(*types.WebSocketOrderEvent)
+	onMarketResolvedMessage func(*types.WebSocketMarketResolvedEvent)
 	onError                 func(error)
 	onClose                 func()
 }
@@ -81,6 +82,11 @@ func (w *WebSocketClient) SetOrderMessageHandler(handler func(*types.WebSocketOr
 	w.onOrderMessage = handler
 }
 
+// SetMarketResolvedMessageHandler sets handler for market resolved events
+func (w *WebSocketClient) SetMarketResolvedMessageHandler(handler func(*types.WebSocketMarketResolvedEvent)) {
+	w.onMarketResolvedMessage = handler
+}
+
 // SetErrorHandler sets handler for connection errors
 func (w *WebSocketClient) SetErrorHandler(handler func(error)) {
 	w.onError = handler
@@ -92,7 +98,7 @@ func (w *WebSocketClient) SetCloseHandler(handler func()) {
 }
 
 // Connect connects to the market channel
-func (w *WebSocketClient) ConnectMarketChannel(assetIDs []string) error {
+func (w *WebSocketClient) ConnectMarketChannel(assetIDs []string, customFeatureEnabled bool) error {
 	u, err := url.Parse(w.baseURL + "/ws/market")
 	if err != nil {
 		return fmt.Errorf("failed to parse WebSocket URL: %w", err)
@@ -107,8 +113,9 @@ func (w *WebSocketClient) ConnectMarketChannel(assetIDs []string) error {
 
 	// Send subscription message
 	subscribeMsg := types.WebSocketSubscribeRequest{
-		AssetIDs: assetIDs,
-		Type:     types.WSChannelMarket,
+		AssetIDs:             assetIDs,
+		Type:                 types.WSChannelMarket,
+		CustomFeatureEnabled: customFeatureEnabled,
 	}
 
 	if err := w.writeMessage(subscribeMsg); err != nil {
@@ -325,6 +332,8 @@ func (w *WebSocketClient) handleMessage(message []byte) {
 		w.handleTradeMessage(message)
 	case types.WSEventTypeOrder:
 		w.handleOrderMessage(message)
+	case types.WSEventTypeMarketResolved:
+		w.handleMarketResolvedMessage(message)
 	default:
 		if w.onError != nil {
 			w.onError(fmt.Errorf("unknown event type: %s", eventType))
@@ -426,4 +435,20 @@ func (w *WebSocketClient) handleOrderMessage(message []byte) {
 	}
 
 	w.onOrderMessage(&event)
+}
+
+func (w *WebSocketClient) handleMarketResolvedMessage(message []byte) {
+	if w.onMarketResolvedMessage == nil {
+		return
+	}
+
+	var event types.WebSocketMarketResolvedEvent
+	if err := json.Unmarshal(message, &event); err != nil {
+		if w.onError != nil {
+			w.onError(fmt.Errorf("failed to unmarshal market resolved event: %w", err))
+		}
+		return
+	}
+
+	w.onMarketResolvedMessage(&event)
 }

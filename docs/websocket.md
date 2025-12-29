@@ -12,6 +12,7 @@ auth	Auth	see next page for auth information
 markets	string[]	array of markets (condition IDs) to receive events for (for user channel)
 assets_ids	string[]	array of asset ids (token IDs) to receive events for (for market channel)
 type	string	id of channel to subscribe to (USER or MARKET)
+custom_feature_enabled	bool	enabling / disabling custom features
 
 Where the auth field is of type Auth which has the form described in the WSS Authentication section below.
 

@@ -3,60 +3,76 @@ package crypto
 import (
 	"crypto/hmac"
 	"crypto/sha256"
-	"encoding/hex"
+	"encoding/base64"
 	"fmt"
-	"hash"
+	"strings"
 )
 
-// HMACSHA256 generates an HMAC-SHA256 signature
-func HMACSHA256(secret, message string) (string, error) {
-	if secret == "" {
-		return "", fmt.Errorf("secret cannot be empty")
-	}
-	if message == "" {
-		return "", fmt.Errorf("message cannot be empty")
+// replaceAll replaces all occurrences of search with replace in s
+func replaceAll(s, search, replace string) string {
+	return strings.ReplaceAll(s, search, replace)
+}
+
+// base64ToBytes converts a base64 string to bytes
+// Handles base64url encoding and sanitizes input like the TypeScript version
+func base64ToBytes(b64 string) ([]byte, error) {
+	// Convert base64url to base64
+	sanitized := b64
+	sanitized = strings.ReplaceAll(sanitized, "-", "+")
+	sanitized = strings.ReplaceAll(sanitized, "_", "/")
+
+	// Remove any non-base64 characters for backwards compatibility
+	var cleaned strings.Builder
+	for _, ch := range sanitized {
+		if (ch >= 'A' && ch <= 'Z') ||
+			(ch >= 'a' && ch <= 'z') ||
+			(ch >= '0' && ch <= '9') ||
+			ch == '+' || ch == '/' || ch == '=' {
+			cleaned.WriteRune(ch)
+		}
 	}
 
-	// Convert secret to bytes
-	secretBytes, err := hex.DecodeString(secret)
+	return base64.StdEncoding.DecodeString(cleaned.String())
+}
+
+// bytesToBase64 converts bytes to base64 string
+func bytesToBase64(data []byte) string {
+	return base64.StdEncoding.EncodeToString(data)
+}
+
+// BuildPolyHmacSignature builds the canonical Polymarket CLOB HMAC signature
+// This matches the TypeScript implementation exactly
+func BuildPolyHmacSignature(
+	secret string,
+	timestamp int64,
+	method string,
+	requestPath string,
+	body *string,
+) (string, error) {
+	// Build message: timestamp + method + requestPath + [body]
+	message := fmt.Sprintf("%d%s%s", timestamp, method, requestPath)
+	if body != nil {
+		message += *body
+	}
+
+	// Import the secret key from base64
+	keyData, err := base64ToBytes(secret)
 	if err != nil {
-		// If not hex, treat as raw string
-		secretBytes = []byte(secret)
+		return "", fmt.Errorf("failed to decode secret: %w", err)
 	}
 
-	// Create HMAC-SHA256 hash
-	h := hmac.New(sha256.New, secretBytes)
+	// Create HMAC-SHA256
+	h := hmac.New(sha256.New, keyData)
 	h.Write([]byte(message))
+	signatureBytes := h.Sum(nil)
 
-	// Return hex encoded signature
-	return hex.EncodeToString(h.Sum(nil)), nil
-}
+	// Convert to base64
+	sig := bytesToBase64(signatureBytes)
 
-// hmacNew creates a new HMAC hash with the given secret
-func hmacNew(secret string) (hash.Hash, error) {
-	if secret == "" {
-		return nil, fmt.Errorf("secret cannot be empty")
-	}
+	// Convert to URL-safe base64 (but keep '=' padding)
+	// Convert '+' to '-'
+	// Convert '/' to '_'
+	sigUrlSafe := replaceAll(replaceAll(sig, "+", "-"), "/", "_")
 
-	// Try to decode as hex first
-	secretBytes, err := hex.DecodeString(secret)
-	if err != nil {
-		// If not hex, use raw string
-		secretBytes = []byte(secret)
-	}
-
-	return hmac.New(sha256.New, secretBytes), nil
-}
-
-// SignRequest signs a request with HMAC-SHA256 using the provided secret
-func SignRequest(secret, method, path, body string, timestamp int64) (string, error) {
-	if secret == "" {
-		return "", fmt.Errorf("secret cannot be empty")
-	}
-
-	// Create message to sign
-	// Format: method + path + body + timestamp
-	message := fmt.Sprintf("%s%s%s%d", method, path, body, timestamp)
-
-	return HMACSHA256(secret, message)
+	return sigUrlSafe, nil
 }

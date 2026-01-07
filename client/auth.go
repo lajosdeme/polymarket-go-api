@@ -146,7 +146,7 @@ func (am *AuthManager) GenerateL2Headers(method, path, body string, timestamp in
 	tstamp := strconv.FormatInt(timestamp, 10)
 
 	// Generate HMAC signature
-	signature, err := crypto.SignRequest(am.apiCredentials.Secret, method, path, body, timestamp)
+	signature, err := crypto.BuildPolyHmacSignature(am.apiCredentials.Secret, timestamp, method, path, &body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign request: %w", err)
 	}

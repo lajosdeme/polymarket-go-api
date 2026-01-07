@@ -40,7 +40,7 @@ const (
 
 // Order represents a CLOB order
 type Order struct {
-	Salt          string    `json:"salt"`
+	Salt          int       `json:"salt"`
 	Maker         string    `json:"maker"`
 	Signer        string    `json:"signer"`
 	Taker         string    `json:"taker"`

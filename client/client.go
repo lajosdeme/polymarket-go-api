@@ -83,7 +83,11 @@ func (c *ClobClient) DoRequest(ctx context.Context, method, path string, body in
 	// Add authentication headers
 	if requireL2Auth {
 		bodyStr := string(reqBody)
-		headers, err := c.authManager.GenerateL2Headers(method, path, bodyStr)
+		timestamp, err := c.GetServerTime(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate L2 headers: %w", err)
+		}
+		headers, err := c.authManager.GenerateL2Headers(method, path, bodyStr, timestamp)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate L2 headers: %w", err)
 		}
@@ -138,7 +142,7 @@ func (c *ClobClient) DoRequestWithL1Auth(ctx context.Context, method, path strin
 	}
 
 	// Add L1 authentication headers
-	tstamp := strconv.FormatInt(time.Now().Unix(), 10)
+	tstamp := strconv.FormatInt(timestamp, 10)
 	headers, err := c.authManager.GenerateL1Headers(tstamp, nonce)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate L1 headers: %w", err)
@@ -188,7 +192,11 @@ func (c *ClobClient) DoGet(ctx context.Context, path string, requireL2Auth bool,
 
 	// Add authentication headers
 	if requireL2Auth {
-		headers, err := c.authManager.GenerateL2Headers("GET", path, "")
+		timestamp, err := c.GetServerTime(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate L2 headers: %w", err)
+		}
+		headers, err := c.authManager.GenerateL2Headers("GET", path, "", timestamp)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate L2 headers: %w", err)
 		}
@@ -237,7 +245,7 @@ func (c *ClobClient) DoGetWithL1Auth(ctx context.Context, path string, nonce uin
 	}
 
 	// Add L1 authentication headers
-	tstamp := strconv.FormatInt(time.Now().Unix(), 10)
+	tstamp := strconv.FormatInt(timestamp, 10)
 	headers, err := c.authManager.GenerateL1Headers(tstamp, nonce)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate L1 headers: %w", err)
@@ -291,9 +299,13 @@ func (c *ClobClient) DoDelete(ctx context.Context, path string, body interface{}
 		req.Header.Set("Content-Type", "application/json")
 	}
 
+	timestamp, err := c.GetServerTime(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate L2 headers: %w", err)
+	}
 	// Add authentication headers
 	bodyStr := string(reqBody)
-	headers, err := c.authManager.GenerateL2Headers("DELETE", path, bodyStr)
+	headers, err := c.authManager.GenerateL2Headers("DELETE", path, bodyStr, timestamp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate L2 headers: %w", err)
 	}
@@ -320,4 +332,21 @@ func (c *ClobClient) DoDelete(ctx context.Context, path string, body interface{}
 	}
 
 	return respBody, nil
+}
+
+// GetServerTime gets the current server timestamp
+func (c *ClobClient) GetServerTime(ctx context.Context) (int64, error) {
+	body, err := c.DoGet(ctx, "/time", false, nil)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get server time: %w", err)
+	}
+
+	// The response is just a number as string
+	timestampStr := string(body)
+	timestamp, err := strconv.ParseInt(timestampStr, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse timestamp: %w", err)
+	}
+
+	return timestamp, nil
 }

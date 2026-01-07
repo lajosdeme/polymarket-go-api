@@ -3,7 +3,6 @@ package client
 import (
 	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/lajosdeme/polymarket-go-api/crypto"
 	"github.com/lajosdeme/polymarket-go-api/types"
@@ -135,7 +134,7 @@ func (am *AuthManager) GenerateL1Headers(timestamp string, nonce uint64) (map[st
 }
 
 // GenerateL2Headers generates L2 authentication headers
-func (am *AuthManager) GenerateL2Headers(method, path, body string) (map[string]string, error) {
+func (am *AuthManager) GenerateL2Headers(method, path, body string, timestamp int64) (map[string]string, error) {
 	if am.authLevel < AuthLevelL2 {
 		return nil, fmt.Errorf("L2 authentication required")
 	}
@@ -144,10 +143,10 @@ func (am *AuthManager) GenerateL2Headers(method, path, body string) (map[string]
 		return nil, fmt.Errorf("API credentials not initialized")
 	}
 
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	tstamp := strconv.FormatInt(timestamp, 10)
 
 	// Generate HMAC signature
-	signature, err := crypto.SignRequest(am.apiCredentials.Secret, method, path, body, time.Now().Unix())
+	signature, err := crypto.SignRequest(am.apiCredentials.Secret, method, path, body, timestamp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign request: %w", err)
 	}
@@ -155,7 +154,7 @@ func (am *AuthManager) GenerateL2Headers(method, path, body string) (map[string]
 	headers := map[string]string{
 		"POLY_ADDRESS":    am.address,
 		"POLY_SIGNATURE":  signature,
-		"POLY_TIMESTAMP":  timestamp,
+		"POLY_TIMESTAMP":  tstamp,
 		"POLY_API_KEY":    am.apiCredentials.APIKey,
 		"POLY_PASSPHRASE": am.apiCredentials.Passphrase,
 	}

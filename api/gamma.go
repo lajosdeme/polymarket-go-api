@@ -368,11 +368,3 @@ func boolPtr(b bool) *bool {
 func stringPtr(s string) *string {
 	return &s
 }
-
-func intPtr(i int) *int {
-	return &i
-}
-
-func int64Ptr(i int64) *int64 {
-	return &i
-}

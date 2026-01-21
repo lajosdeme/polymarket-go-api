@@ -18,6 +18,8 @@ const (
 	WSEventTypeOrder WebSocketEventType = "order"
 	// WSEventTypeMarketResolved - Market resolved event
 	WSEventTypeMarketResolved WebSocketEventType = "market_resolved"
+	// WSEventTypeBestBidAsk - Best bid and ask prices event
+	WSEventTypeBestBidAsk WebSocketEventType = "best_bid_ask"
 )
 
 // WebSocketChannelType represents the type of WebSocket channel
@@ -167,4 +169,15 @@ type WebSocketMarketResolvedEvent struct {
 	WinningOutcome string                 `json:"winning_outcome"`
 	EventMessage   *WebSocketEventMessage `json:"event_message"`
 	Timestamp      string                 `json:"timestamp"`
+}
+
+// WebSocketBestBidAskEvent represents a best bid and ask prices event
+type WebSocketBestBidAskEvent struct {
+	EventType WebSocketEventType `json:"event_type"`
+	Market    string             `json:"market"`
+	AssetID   string             `json:"asset_id"`
+	BestBid   string             `json:"best_bid"`
+	BestAsk   string             `json:"best_ask"`
+	Spread    string             `json:"spread"`
+	Timestamp string             `json:"timestamp"`
 }

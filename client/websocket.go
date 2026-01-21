@@ -29,6 +29,7 @@ type WebSocketClient struct {
 	onTradeMessage          func(*types.WebSocketTradeEvent)
 	onOrderMessage          func(*types.WebSocketOrderEvent)
 	onMarketResolvedMessage func(*types.WebSocketMarketResolvedEvent)
+	onBestBidAskMessage     func(*types.WebSocketBestBidAskEvent)
 	onError                 func(error)
 	onClose                 func()
 }
@@ -85,6 +86,11 @@ func (w *WebSocketClient) SetOrderMessageHandler(handler func(*types.WebSocketOr
 // SetMarketResolvedMessageHandler sets handler for market resolved events
 func (w *WebSocketClient) SetMarketResolvedMessageHandler(handler func(*types.WebSocketMarketResolvedEvent)) {
 	w.onMarketResolvedMessage = handler
+}
+
+// SetBestBidAskMessageHandler sets handler for best bid and ask events
+func (w *WebSocketClient) SetBestBidAskMessageHandler(handler func(*types.WebSocketBestBidAskEvent)) {
+	w.onBestBidAskMessage = handler
 }
 
 // SetErrorHandler sets handler for connection errors
@@ -334,6 +340,8 @@ func (w *WebSocketClient) handleMessage(message []byte) {
 		w.handleOrderMessage(message)
 	case types.WSEventTypeMarketResolved:
 		w.handleMarketResolvedMessage(message)
+	case types.WSEventTypeBestBidAsk:
+		w.handleBestBidAskMessage(message)
 	default:
 		if w.onError != nil {
 			w.onError(fmt.Errorf("unknown event type: %s", eventType))
@@ -451,4 +459,20 @@ func (w *WebSocketClient) handleMarketResolvedMessage(message []byte) {
 	}
 
 	w.onMarketResolvedMessage(&event)
+}
+
+func (w *WebSocketClient) handleBestBidAskMessage(message []byte) {
+	if w.onBestBidAskMessage == nil {
+		return
+	}
+
+	var event types.WebSocketBestBidAskEvent
+	if err := json.Unmarshal(message, &event); err != nil {
+		if w.onError != nil {
+			w.onError(fmt.Errorf("failed to unmarshal best bid ask event: %w", err))
+		}
+		return
+	}
+
+	w.onBestBidAskMessage(&event)
 }

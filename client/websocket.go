@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -18,6 +19,7 @@ type WebSocketClient struct {
 	authManager  *AuthManager
 	pingInterval time.Duration
 	pingTicker   *time.Ticker
+	pingMu       sync.Mutex
 	writeMutex   sync.Mutex
 	stopChan     chan struct{}
 
@@ -219,9 +221,11 @@ func (w *WebSocketClient) UnsubscribeFromAssets(assetIDs []string) error {
 func (w *WebSocketClient) Close() error {
 	close(w.stopChan)
 
+	w.pingMu.Lock()
 	if w.pingTicker != nil {
 		w.pingTicker.Stop()
 	}
+	w.pingMu.Unlock()
 
 	if w.conn != nil {
 		return w.conn.Close()
@@ -254,14 +258,17 @@ func (w *WebSocketClient) writeMessage(msg interface{}) error {
 
 // startPing starts the ping routine
 func (w *WebSocketClient) startPing() {
+	w.pingMu.Lock()
 	w.pingTicker = time.NewTicker(w.pingInterval)
-	defer w.pingTicker.Stop()
+	ticker := w.pingTicker
+	w.pingMu.Unlock()
+	defer ticker.Stop()
 
 	for {
 		select {
 		case <-w.stopChan:
 			return
-		case <-w.pingTicker.C:
+		case <-ticker.C:
 			if w.conn != nil {
 				w.writeMutex.Lock()
 				w.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
@@ -307,8 +314,26 @@ func (w *WebSocketClient) messageHandler() {
 	}
 }
 
-// handleMessage processes incoming WebSocket messages
+// handleMessage processes incoming WebSocket messages. The CLOB sends the
+// initial book snapshots of a subscription as one JSON array frame (one
+// element per asset id); such a frame is split and each element dispatched
+// as if it had arrived on its own.
 func (w *WebSocketClient) handleMessage(message []byte) {
+	trimmed := bytes.TrimSpace(message)
+	if len(trimmed) > 0 && trimmed[0] == '[' {
+		var elems []json.RawMessage
+		if err := json.Unmarshal(trimmed, &elems); err != nil {
+			if w.onError != nil {
+				w.onError(fmt.Errorf("failed to unmarshal message array: %w", err))
+			}
+			return
+		}
+		for _, e := range elems {
+			w.handleMessage(e)
+		}
+		return
+	}
+
 	var baseMsg map[string]interface{}
 	if err := json.Unmarshal(message, &baseMsg); err != nil {
 		if w.onError != nil {
